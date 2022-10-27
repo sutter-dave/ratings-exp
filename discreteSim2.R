@@ -8,7 +8,7 @@ source("simData.r")
 ##================================
 
 NUM_PLAYERS <- 2
-NUM_WEEKS <- 1000
+NUM_WEEKS <- 100
 
 ## we implicitly assume two players in this algo
 if(NUM_PLAYERS != 2) {
@@ -33,7 +33,7 @@ M <- {
   M <- matrix(v,nrow=SIM_N,ncol=SIM_N)
   for(i in 1:SIM_N) {
     for(j in 1:SIM_N) {
-      M[i,j] <- pWin(i,j)
+      M[i,j] <- pMatch(i,j,TRUE)
     }
   }
   M
@@ -87,31 +87,15 @@ for(i in 2:NUM_WEEKS) {
   ratings[[i]] = runOneWeek(matches[[i]],ratings[[i-1]])
 }
 
-## plot results
-x = numeric()
-y = numeric()
-z = numeric()
-index = 1
-for(i in 1:SIM_N) {
-  for(j in 1:SIM_N) {
-     x[index] = i
-     y[index] = j
-     z[index] = ratings[[NUM_WEEKS]][i,j]
-     index = index + 1
-  }
-}
+image(ratings[[NUM_WEEKS]])
+
+points(players[1]/MAX_RATING,players[2]/MAX_RATING,col="blue",pch=19)
 
 
-zf = cut(z,breaks=(0:10)*(max(z)/10),labels=1:10,include.lowest=TRUE)
+##here we fix player 1 at 50
+plot(ratings[[NUM_WEEKS]][50,],t="l")
+p2mn <- sum(1:SIM_N * ratings[[NUM_WEEKS]][50,]) / sum(ratings[[NUM_WEEKS]][50,])
+abline(v = p2mn)
+abline(v = players[2])
 
-plot(x,y,t="n")
-for(iz in 1:10) {
-  slctr <- (zf == iz)
-  clr <- sprintf("#%x%x%x",256 - iz * 20,256 - iz * 20, 256 - iz * 20)
-  points(x[slctr],y[slctr],col=clr,pch=15,cex=1)
-}
-
-points(players[1],players[2],col="red")
-
-
-
+print(sprintf("player 2: actual: %f meas: %f",players[2],p2mn))

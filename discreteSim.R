@@ -1,9 +1,9 @@
-set.seed(16)
+set.seed(1699)
 
 source("simData.r")
 
 NUM_PLAYERS <- 10
-NUM_WEEKS <- 1000
+NUM_WEEKS <- 100
 
 ##================================
 ## discrete model
@@ -23,17 +23,11 @@ M <- {
   M <- matrix(v,nrow=SIM_N,ncol=SIM_N)
   for(i in 1:SIM_N) {
     for(j in 1:SIM_N) {
-      M[i,j] <- pWin(i,j)
+      M[i,j] <- pMatch(i,j,TRUE)
     }
   }
   M
 }
-
-## initial ratings matrix
-ratings0 <- matrix(rep(1/SIM_N,NUM_PLAYERS * SIM_N),nrow=NUM_PLAYERS,ncol=SIM_N)
-
-ratings0[1,] <- rep(0,SIM_N)
-ratings0[1,50] <- 1
 
 ##=============================
 ## player rating evolution functions
@@ -154,6 +148,16 @@ simData = getSimulatedData(NUM_PLAYERS,NUM_WEEKS)
 players = simData$players
 matches = simData$matches
 
+## initial ratings matrix
+##we have the first player hard coded to an integer
+ratings0 <- matrix(rep(1/SIM_N,NUM_PLAYERS * SIM_N),nrow=NUM_PLAYERS,ncol=SIM_N)
+
+if(players[1] != floor(players[1])) {
+  error("Player 1 rating not an integer! We will assume it is!")
+}
+ratings0[1,] <- rep(0,SIM_N)
+ratings0[1,players[1]] <- 1
+
 ##evolve the ratings
 ratings = list()
 ratings[[1]] =  runOneWeek(matches[[1]],ratings0)
@@ -180,7 +184,14 @@ for(i in 1:NUM_PLAYERS) {
   plot(ratings[[NUM_WEEKS]][i,],t="l")
   abline(v=players[i],col="red",lwd=2)
   abline(v=pm[i],col="blue",lwd=1)
+  print(sprintf("player %d: actual: %f meas: %f",i,players[i],pm[i]))
 }
 
 plot(pz)
+
+results <- data.frame(player = 1:NUM_PLAYERS,actual = players,meas = pm, measdev = psd)
+results$err <- results$meas - results$actual
+results$zerr <- results$err / results$measdev
+
+print(results)
 

@@ -1,14 +1,21 @@
 
-MIN_RATING <- 0
+MIN_RATING <- 1
 MAX_RATING <- 100
 
-PROB_CONSTANT <- (MAX_RATING - MIN_RATING) / 3
+PROB_CONSTANT <- 100 / 3
 
-## This is the probability of player one winning a match, given the
-## ranking values r and rOpp
-pWin <- function(r,rOpp) {
-  xx <- exp( (r - rOpp) / PROB_CONSTANT )
-  xx / (1 + xx)
+## probability of result p1Wins given r1 and r2
+pMatch <- function(r1,r2,p1Wins) {
+  xx <- exp( (r1 - r2)/PROB_CONSTANT )
+  
+  if(p1Wins) {
+    xp <- xx / (1 + xx)
+  }
+  else {
+    xp <- 1 / (1 + xx)
+  }
+  
+  xp
 }
 
 ## this function creates a data frame with a set of generated matches
@@ -25,7 +32,7 @@ getWeekMatches <- function(players) {
   matchFrame$p2TR <- players[matchFrame$p2]
   
   ## add a column for the true win percentage (for player 1)
-  matchFrame$pwin1 <- pWin(matchFrame$p1TR,matchFrame$p2TR)
+  matchFrame$pwin1 <- pMatch(matchFrame$p1TR,matchFrame$p2TR,TRUE)
   
   ## add a random number from 0 to 1, to calculate the winner
   matchFrame$mrv <- runif(length(matchFrame$pwin1))
@@ -44,6 +51,8 @@ getWeekMatches <- function(players) {
 ## This function creates a set of players with a randomized "rating"
 ## and a set of matches with simulated win/loss results
 getSimulatedData <- function(NUM_PLAYERS,NUM_WEEKS) {
+  
+  set.seed(134)
 
   ##------------------------------------
   ## simulated player "true" ratings
@@ -52,7 +61,7 @@ getSimulatedData <- function(NUM_PLAYERS,NUM_WEEKS) {
   players <- runif(NUM_PLAYERS,MIN_RATING,MAX_RATING) 
   
   ##fix one of the player rankings - player 1 at center point
-  players[1] = (MIN_RATING + MAX_RATING)/2
+  players[1] = floor( (MIN_RATING + MAX_RATING)/2 )
 
   ##------------------------------------
   ## "schedule" generation and simulation
