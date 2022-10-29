@@ -5,7 +5,7 @@ library(dplyr)
 source("simData.r")
 
 NUM_PLAYERS <- 9
-NUM_WEEKS <- 1000
+NUM_WEEKS <- 100
 
 ##filled in below
 R0 <- 0
@@ -233,7 +233,7 @@ plotDist<- function(rvec,oneFrame,index) {
     y[i] <- getFrameLogProb(rFree,oneFrame)
   }
   
-  plot(x,y)
+  plot(x,y,t="l")
   abline(h=out$value + 1)
   abline(v=out$par[index-1],col="blue")
   abline(v=players[index],col="red")
