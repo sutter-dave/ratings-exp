@@ -51,9 +51,48 @@ getPostRatingsVarFunc <- function(postRatingsDistFunc,post_norm,post_mean,index)
   }
 }
 
-calcNewRatings <- function(r1m,r1sd,r2m,r2sd,p1Wins) {
+calcNewRatings <- function(r1m,r1sd,r2m,r2sd,p1Wins,p1Index,p2Index) {
   #create the post ratings distribution (not normalized)
   postRatingsDistFunc <- getPostRatingsDistFunc(r1m,r1sd,r2m,r2sd,p1Wins)
+  
+  ##############################################################################
+  ## plot wave function for r1 and r2 - by integrating out theother player rating
+  
+  plr1 <- 0
+  plr2 <- 0
+  
+  plf1 <- function(r2) {
+    p1 <- postRatingsDistFunc(c(plr1,r2))
+  } 
+  plf2 <- function(r1) {
+    p2 <-postRatingsDistFunc(c(r1,plr2))
+  }
+  
+  plLabel1 = sprintf("Player %d",p1Index)
+  plLabel2 = sprintf("Player %d",p2Index)
+  
+  pldist1 = numeric()
+  pldist2 = numeric()
+  plx1 = numeric()
+  plx2 = numeric()
+  for(i in 1:100) {
+    plr1 = r1m + (8 * r1sd * (i - 50)/100)
+    plx1[i] = plr1
+    pldist1[i] = integrate(Vectorize(plf1),lower=r2m - 4 * r2sd,upper = r2m + 4 * r2sd)$value
+    
+    
+    plr2 = r2m + (8 * r2sd * (i - 50)/100)
+    plx2[i] = plr2
+    pldist2[i] = integrate(Vectorize(plf2),lower=r1m - 4 * r1sd,upper = r1m + 4 * r1sd)$value
+  }
+  
+  plot(plx1,pldist1,type="l",main=plLabel1)
+  plot(plx2,pldist2,type="l",main=plLabel2)
+  
+  
+  
+  
+  ##############################################################################
   
   ##need to get the integegration region - true 4 standard deviations from the prior peak
   lowerBounds <- c(r1m - 4 * r1sd, r2m - 4 * r2sd)
@@ -93,6 +132,12 @@ runOneWeek <- function(matchFrame,priorRatings) {
   # (later we will evolve the ratings before update, probably)
   postRatings <- priorRatings
   
+  ##############################################################################
+  ## for distribution plots
+  oldMfrow <- par("mfrow")
+  par(mfrow=c(1,2))
+  ##############################################################################  
+  
   #this function process one match, getting updated ratings
   processMatch <- function(p1,p2,p1Wins) {
     prior_r1m <- priorRatings$pm[p1]
@@ -100,7 +145,7 @@ runOneWeek <- function(matchFrame,priorRatings) {
     prior_r2m <- priorRatings$pm[p2]
     prior_r2sd <- priorRatings$psd[p2]
     
-    postInfo = calcNewRatings(prior_r1m,prior_r1sd,prior_r2m, prior_r2sd, p1Wins)
+    postInfo = calcNewRatings(prior_r1m,prior_r1sd,prior_r2m, prior_r2sd, p1Wins, p1Index = p1, p2Index = p2)
 
     postRatings$pm[p1] <<- postInfo$r1m
     postRatings$psd[p1] <<- postInfo$r1sd 
@@ -114,12 +159,17 @@ runOneWeek <- function(matchFrame,priorRatings) {
     else {
       winner <- as.character(p2)
     }
-    print(sprintf("m1 = %f sd1 = %f m2 = %f sd2 = %f %s",postRatings$pm[1],postRatings$psd[1],postRatings$pm[2],postRatings$psd[2],winner))
+    #print(sprintf("%d m = %f sd = %f %d m = %f sd = %f winner = %s",p1,postRatings$pm[1],postRatings$psd[1],p2,postRatings$pm[2],postRatings$psd[2],winner))
     #############
   }
   
   #processMatch for each row of the match data frame
   mapply(processMatch,matchFrame$p1,matchFrame$p2,matchFrame$win1)
+  
+  ##############################################################################
+  ## for distribution plots
+  par(mfrow=oldMfrow)
+  ##############################################################################  
   
   # return the new ratings matrix
   postRatings
@@ -165,6 +215,7 @@ results$err <- results$meas - results$actual
 results$zerr <- results$err / results$measdev
 
 print(results)
+print(sum(results$err^2))
 
 
 ##======================================

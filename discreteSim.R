@@ -194,4 +194,5 @@ results$err <- results$meas - results$actual
 results$zerr <- results$err / results$measdev
 
 print(results)
+print(sum(results$err^2))
 

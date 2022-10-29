@@ -75,7 +75,7 @@ runOneWeek <- function(matchFrame,priorRatings) {
     else {
       winner <- as.character(p2)
     }
-    print(sprintf("m1 = %f sd1 = %f m2 = %f sd2 = %f %s",postRatings$pm[1],postRatings$psd[1],postRatings$pm[2],postRatings$psd[2],winner))
+    #print(sprintf("m1 = %f sd1 = %f m2 = %f sd2 = %f %s",postRatings$pm[1],postRatings$psd[1],postRatings$pm[2],postRatings$psd[2],winner))
     #############
   }
   
@@ -129,6 +129,7 @@ results$err <- results$meas - results$actual
 results$zerr <- results$err / results$measdev
 
 print(results)
+print(sum(results$err^2))
 
 
                    
