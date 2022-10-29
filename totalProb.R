@@ -4,8 +4,8 @@ library(dplyr)
 
 source("simData.r")
 
-NUM_PLAYERS <- 10
-NUM_WEEKS <- 100
+NUM_PLAYERS <- 9
+NUM_WEEKS <- 1000
 
 ##filled in below
 R0 <- 0
@@ -228,14 +228,26 @@ plotDist<- function(rvec,oneFrame,index) {
   x <- numeric()
   y <- numeric()
   for(i in 1:100) {
-    x[i] <- rIndex + (i-50)/4
+    x[i] <- rIndex + (i-50)/5
     rFree[index-1] <- x[i]
     y[i] <- getFrameLogProb(rFree,oneFrame)
   }
   
   plot(x,y)
-  abline(h=out4$value + 1)
+  abline(h=out$value + 1)
+  abline(v=out$par[index-1],col="blue")
+  abline(v=players[index],col="red")
 }
+
+par(mfrow=c(2,4))
+plotDist(c(R0,out$par),oneFrame,2)
+plotDist(c(R0,out$par),oneFrame,3)
+plotDist(c(R0,out$par),oneFrame,4)
+plotDist(c(R0,out$par),oneFrame,5)
+plotDist(c(R0,out$par),oneFrame,6)
+plotDist(c(R0,out$par),oneFrame,7)
+plotDist(c(R0,out$par),oneFrame,8)
+plotDist(c(R0,out$par),oneFrame,9)
 
 
 
