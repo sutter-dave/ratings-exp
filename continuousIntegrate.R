@@ -58,36 +58,36 @@ calcNewRatings <- function(r1m,r1sd,r2m,r2sd,p1Wins,p1Index,p2Index) {
   ##############################################################################
   ## plot wave function for r1 and r2 - by integrating out theother player rating
   
-  plr1 <- 0
-  plr2 <- 0
+  #plr1 <- 0
+  #plr2 <- 0
+  #
+  #plf1 <- function(r2) {
+  #  p1 <- postRatingsDistFunc(c(plr1,r2))
+  #} 
+  #plf2 <- function(r1) {
+  #  p2 <-postRatingsDistFunc(c(r1,plr2))
+  #}
+  #
+  #plLabel1 = sprintf("Player %d",p1Index)
+  #plLabel2 = sprintf("Player %d",p2Index)
+  #
+  #pldist1 = numeric()
+  #pldist2 = numeric()
+  #plx1 = numeric()
+  #plx2 = numeric()
+  #for(i in 1:100) {
+  #  plr1 = r1m + (8 * r1sd * (i - 50)/100)
+  #  plx1[i] = plr1
+  #  pldist1[i] = integrate(Vectorize(plf1),lower=r2m - 4 * r2sd,upper = r2m + 4 * r2sd)$value
+  #  
+  #  
+  #  plr2 = r2m + (8 * r2sd * (i - 50)/100)
+  #  plx2[i] = plr2
+  #  pldist2[i] = integrate(Vectorize(plf2),lower=r1m - 4 * r1sd,upper = r1m + 4 * r1sd)$value
+  #}
   
-  plf1 <- function(r2) {
-    p1 <- postRatingsDistFunc(c(plr1,r2))
-  } 
-  plf2 <- function(r1) {
-    p2 <-postRatingsDistFunc(c(r1,plr2))
-  }
-  
-  plLabel1 = sprintf("Player %d",p1Index)
-  plLabel2 = sprintf("Player %d",p2Index)
-  
-  pldist1 = numeric()
-  pldist2 = numeric()
-  plx1 = numeric()
-  plx2 = numeric()
-  for(i in 1:100) {
-    plr1 = r1m + (8 * r1sd * (i - 50)/100)
-    plx1[i] = plr1
-    pldist1[i] = integrate(Vectorize(plf1),lower=r2m - 4 * r2sd,upper = r2m + 4 * r2sd)$value
-    
-    
-    plr2 = r2m + (8 * r2sd * (i - 50)/100)
-    plx2[i] = plr2
-    pldist2[i] = integrate(Vectorize(plf2),lower=r1m - 4 * r1sd,upper = r1m + 4 * r1sd)$value
-  }
-  
-  plot(plx1,pldist1,type="l",main=plLabel1)
-  plot(plx2,pldist2,type="l",main=plLabel2)
+  #plot(plx1,pldist1,type="l",main=plLabel1)
+  #plot(plx2,pldist2,type="l",main=plLabel2)
   
   
   

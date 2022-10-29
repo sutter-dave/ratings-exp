@@ -49,6 +49,18 @@ getFrameLogProb <- function(rFree,oneFrame) {
   -sum(log(getFrameProbVec(rFull,oneFrame)))
 }
 
+SMOOTH_HCNT = 500
+SMOOTH_SD <- 5
+getFrameLogProbSmoothed <- function(rFree,oneFrame) {
+  val <- getFrameLogProb(rFree,oneFrame) / (2 * SMOOTH_HCNT + 1)
+  for(i in 1:SMOOTH_HCNT) {
+    rCloud = rnorm(length(rFree),0,SMOOTH_SD)
+    val = val + getFrameLogProb(rFree + rCloud,oneFrame) / (2 * SMOOTH_HCNT + 1)
+    val = val + getFrameLogProb(rFree - rCloud,oneFrame) / (2 * SMOOTH_HCNT + 1)
+  }
+  val
+}
+
 ## this gets the gradient of the negative log of the probability 
 ## for all match outcomes for this rFree (the ratings vector excluding player 1, which is fixed)
 getFrameLogProbGrad <- function(rFree,oneFrame) {
@@ -84,6 +96,58 @@ R0 <- players[1]
 oneFrame <- data.frame(p1 = unlist(lapply(matches,function(row) row$p1)),
                         p2 = unlist(lapply(matches,function(row) row$p2)),
                         win1 = unlist(lapply(matches,function(row) row$win1)))
+
+
+out <- optim(rep(R0,NUM_PLAYERS-1),getFrameLogProb,oneFrame=oneFrame)
+
+meas <- c(R0,out$par)
+results <- data.frame(player = 1:NUM_PLAYERS, actual = players, meas = meas, err = meas - players)
+print(results)
+print(sum(results$err^2))
+
+################################################################################
+################################################################################
+################################################################################
+dontRUn <- function(dummy) {
+  
+outS <- optim(rep(R0,NUM_PLAYERS-1),getFrameLogProbSmoothed,oneFrame=oneFrame)
+outS1 <- optim(outS$par,getFrameLogProbSmoothed,oneFrame=oneFrame)
+outS2 <- optim(outS1$par,getFrameLogProbSmoothed,oneFrame=oneFrame)
+outS3 <- optim(outS2$par,getFrameLogProbSmoothed,oneFrame=oneFrame)
+
+out1 <- optim(out$par,getFrameLogProb,oneFrame=oneFrame)
+out2 <- optim(out1$par,getFrameLogProb,oneFrame=oneFrame)
+out3 <- optim(out2$par,getFrameLogProb,oneFrame=oneFrame)
+
+players[2:NUM_PLAYERS]
+out$par
+outS$par
+outS1$par
+outS2$par
+outS3$par
+out1$par
+out2$par
+out3$par
+
+
+sum((players[2:NUM_PLAYERS] - out$par)^2)
+sum((players[2:NUM_PLAYERS] - outS$par)^2)
+sum((players[2:NUM_PLAYERS] - out1$par)^2)
+sum((players[2:NUM_PLAYERS] - outS1$par)^2)
+sum((players[2:NUM_PLAYERS] - out2$par)^2)
+sum((players[2:NUM_PLAYERS] - outS2$par)^2)
+sum((players[2:NUM_PLAYERS] - out3$par)^2)
+sum((players[2:NUM_PLAYERS] - outS3$par)^2)
+
+out$value
+outS$value
+outS1$value
+outS2$value
+outS3$value
+out1$value
+out2$value
+out3$value
+
 
 
 #out <- optim(rep(R0,NUM_PLAYERS-1),getFrameLogProb,oneFrame=oneFrame)
@@ -193,6 +257,7 @@ plotDist<- function(rvec,oneFrame,index) {
 
 ## test 1
 
+testing <- function(dummy) {
 v1 <- pMatchVec(30,50,TRUE)
 v2 <- pMatchVec(30.02,50,TRUE)
 
@@ -244,3 +309,8 @@ abfunc <- function(rFree,oneFrame) {
 }
 
 outA <- optim(rep(R0,NUM_PLAYERS-1),abfunc,oneFrame=oneFrame)
+
+
+
+}
+}

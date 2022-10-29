@@ -3,7 +3,7 @@ set.seed(1699)
 source("simData.r")
 
 NUM_PLAYERS <- 10
-NUM_WEEKS <- 100
+NUM_WEEKS <- 1000
 
 ##================================
 ## discrete model

@@ -3,7 +3,7 @@ source("simData.R")
 library(dplyr)
 
 NUM_PLAYERS <- 10
-NUM_WEEKS <- 100
+NUM_WEEKS <- 1000
 
 ## the mean of our initial distribution
 MEAN_0 <- 50
