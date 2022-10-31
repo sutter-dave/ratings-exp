@@ -52,7 +52,7 @@ getWeekMatches <- function(players) {
 ## and a set of matches with simulated win/loss results
 getSimulatedData <- function(NUM_PLAYERS,NUM_WEEKS) {
   
-  set.seed(56)
+  set.seed(656)
 
   ##------------------------------------
   ## simulated player "true" ratings

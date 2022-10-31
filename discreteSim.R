@@ -13,6 +13,34 @@ NUM_WEEKS <- 1000
 ##length of the quantized simulation vector
 SIM_N <- 100
 
+##spread matrix--------------------------
+##construct the tridiagonal spread matrix to model change in rating over time
+
+##quck and dirty implementation
+## - I can crank up the decay factor by a lot. 
+## If there are no other problems, I shoudl reimplement with a wider spread
+## like maybe a true normal distribution
+
+SPREAD_DECAY <- .2
+SPREAD_MATRIX <- matrix(rep(0,10000),nrow=100,ncol=100)
+SPREAD_MATRIX[row(SPREAD_MATRIX)==col(SPREAD_MATRIX)] <- 1 - SPREAD_DECAY
+SPREAD_MATRIX[abs(row(SPREAD_MATRIX)-col(SPREAD_MATRIX)) == 1] <- SPREAD_DECAY/2
+#ensure sum to 1 at boundaries
+SPREAD_MATRIX[1,1] <- 1 - SPREAD_DECAY/2 
+SPREAD_MATRIX[100,100] <- 1 - SPREAD_DECAY/2
+
+DO_SPREAD <- FALSE
+#DO_SPREAD <- TRUE
+
+spreadFunction <- function(vec) {
+  SPREAD_MATRIX %*% vec
+}
+
+##---------------------------------------
+
+
+
+
 ##-------------------------------------------------------------
 ## This matrix gives the probability for player 1 to win, where
 ## first index (rows): index for player 1
@@ -111,10 +139,17 @@ runOneWeek <- function(matchFrame,priorRatings) {
   # (later we will evolve the ratings before update, probably)
   postRatings <- priorRatings
   
+  if(DO_SPREAD) {
+    #here we model a potential drift in the ranking over time
+    #do not apply to player 1 - fixed rating
+    postRatings[2:NUM_PLAYERS,] <- t(apply(postRatings[2:NUM_PLAYERS,],1,spreadFunction))
+  }
+
+  
   #this function process one match, getting updated ratings
   processMatch <- function(p1,p2,p1Wins) {
-    priorR1 <- priorRatings[p1,]
-    priorR2 <- priorRatings[p2,]
+    priorR1 <- postRatings[p1,]
+    priorR2 <- postRatings[p2,]
     
     postInfo = doMatch(priorR1,priorR2,p1Wins)
     
@@ -184,7 +219,7 @@ for(i in 1:NUM_PLAYERS) {
   plot(ratings[[NUM_WEEKS]][i,],t="l")
   abline(v=players[i],col="red",lwd=2)
   abline(v=pm[i],col="blue",lwd=1)
-  print(sprintf("player %d: actual: %f meas: %f",i,players[i],pm[i]))
+  #print(sprintf("player %d: actual: %f meas: %f",i,players[i],pm[i]))
 }
 
 plot(pz)

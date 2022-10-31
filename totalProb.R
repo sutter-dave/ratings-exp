@@ -228,7 +228,7 @@ plotDist<- function(rvec,oneFrame,index) {
   x <- numeric()
   y <- numeric()
   for(i in 1:100) {
-    x[i] <- rIndex + (i-50)/5
+    x[i] <- rIndex + (i-50)/2
     rFree[index-1] <- x[i]
     y[i] <- getFrameLogProb(rFree,oneFrame)
   }
