@@ -4,8 +4,8 @@ library(dplyr)
 
 source("simData.r")
 
-NUM_PLAYERS <- 10
-NUM_WEEKS <- 1000
+NUM_PLAYERS <- 2
+NUM_WEEKS <- 20
 
 R0 <- 0
 

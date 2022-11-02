@@ -2,8 +2,8 @@ source("simData.R")
 
 library(dplyr)
 
-NUM_PLAYERS <- 10
-NUM_WEEKS <- 1000
+NUM_PLAYERS <- 2
+NUM_WEEKS <- 20
 
 ## the mean of our initial distribution
 MEAN_0 <- 50
@@ -26,14 +26,15 @@ calcNewRatings <- function(r1m,r1sd,r2m,r2sd,p1Wins) {
   
   matchValues <- runif(num_runs,min=0,max=1)
   
+  ##why bother making this data frame. I can just keep the vectors 
   sim <- data.frame(p1=player1Rs,p2=player2Rs,mval=matchValues)
   
   ## calculate the winner
-  sim$p1wins <- pMatch(sim$p1,sim$p2,p1Wins=TRUE) > sim$mval
+  sim$p1w <- pMatch(sim$p1,sim$p2,TRUE) > sim$mval
   
   ##output scenarios - p1 wins and loses
   
-  trueFrame <- filter(sim,p1wins == p1Wins)
+  trueFrame <- filter(sim,p1w == p1Wins)
   
   ## the distributions of p1 and p2 in each dataframe gives the distributions
   ## after the match

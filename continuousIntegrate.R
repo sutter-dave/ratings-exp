@@ -2,8 +2,8 @@ source("simData.r")
 
 library(cubature)
 
-NUM_PLAYERS <- 10
-NUM_WEEKS <- 100
+NUM_PLAYERS <- 2
+NUM_WEEKS <- 20
 
 ## the mean of our initial distribution
 MEAN_0 <- 50

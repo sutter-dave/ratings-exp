@@ -4,8 +4,8 @@ library(dplyr)
 
 source("simData.r")
 
-NUM_PLAYERS <- 9
-NUM_WEEKS <- 100
+NUM_PLAYERS <- 2
+NUM_WEEKS <- 20
 
 ##filled in below
 R0 <- 0
@@ -98,7 +98,7 @@ oneFrame <- data.frame(p1 = unlist(lapply(matches,function(row) row$p1)),
                         win1 = unlist(lapply(matches,function(row) row$win1)))
 
 
-out <- optim(rep(R0,NUM_PLAYERS-1),getFrameLogProb,oneFrame=oneFrame)
+out <- optim(rep(R0,NUM_PLAYERS-1),getFrameLogProb,oneFrame=oneFrame,method="Brent",lower = -100,upper = 200)
 
 meas <- c(R0,out$par)
 results <- data.frame(player = 1:NUM_PLAYERS, actual = players, meas = meas, err = meas - players)
@@ -228,7 +228,7 @@ plotDist<- function(rvec,oneFrame,index) {
   x <- numeric()
   y <- numeric()
   for(i in 1:100) {
-    x[i] <- rIndex + (i-50)/2
+    x[i] <- rIndex + (i-50)/1
     rFree[index-1] <- x[i]
     y[i] <- getFrameLogProb(rFree,oneFrame)
   }
