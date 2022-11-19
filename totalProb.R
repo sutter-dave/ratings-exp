@@ -97,7 +97,7 @@ oneFrame <- data.frame(p1 = unlist(lapply(matches,function(row) row$p1)),
                         p2 = unlist(lapply(matches,function(row) row$p2)),
                         win1 = unlist(lapply(matches,function(row) row$win1)))
 
-
+##use brent (only) if there are only two players!!
 out <- optim(rep(R0,NUM_PLAYERS-1),getFrameLogProb,oneFrame=oneFrame,method="Brent",lower = -100,upper = 200)
 
 meas <- c(R0,out$par)
