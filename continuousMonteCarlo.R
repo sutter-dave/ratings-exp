@@ -1,9 +1,16 @@
-source("simData.R")
+source("matchUtil.R")
 
 library(dplyr)
 
-NUM_PLAYERS <- 2
-NUM_WEEKS <- 20
+######################################################################
+## WRAPPER TO RETURN MODEL
+## (FIGURE OUT THE PROPER WAY TO PROTECT THESE LATER)
+## This wraps all the code that generates the model. I think I want
+## to make a package instead
+getContinuousMonteCarlo <- function() {
+  
+######################################################################
+
 
 ## the mean of our initial distribution
 MEAN_0 <- 50
@@ -29,11 +36,10 @@ calcNewRatings <- function(r1m,r1sd,r2m,r2sd,p1Wins) {
   ##why bother making this data frame. I can just keep the vectors 
   sim <- data.frame(p1=player1Rs,p2=player2Rs,mval=matchValues)
   
-  ## calculate the winner
+  ## calculate the winner (p1W == TRUE means player 1 wins)
   sim$p1w <- pMatch(sim$p1,sim$p2,TRUE) > sim$mval
   
-  ##output scenarios - p1 wins and loses
-  
+  ##aggregate the sim events where the proper player wins
   trueFrame <- filter(sim,p1w == p1Wins)
   
   ## the distributions of p1 and p2 in each dataframe gives the distributions
@@ -50,32 +56,35 @@ calcNewRatings <- function(r1m,r1sd,r2m,r2sd,p1Wins) {
 
 
 
-runOneWeek <- function(matchFrame,priorRatings) {
+processMatches <- function(matchFrame,priorRatings) {
+  ##this is the seed for our monte carlo simulations
+  set.seed(34234)
+  
   # copy the ratings. We will update them for each game
   # (later we will evolve the ratings before update, probably)
   postRatings <- priorRatings
   
   #this function process one match, getting updated ratings
   processMatch <- function(p1,p2,p1Wins) {
-    prior_r1m <- priorRatings$pm[p1]
-    prior_r1sd <- priorRatings$psd[p1]
-    prior_r2m <- priorRatings$pm[p2]
-    prior_r2sd <- priorRatings$psd[p2]
+    prior_r1m <- priorRatings$prs[p1]
+    prior_r1sd <- priorRatings$prsds[p1]
+    prior_r2m <- priorRatings$prs[p2]
+    prior_r2sd <- priorRatings$prsds[p2]
     
     postInfo = calcNewRatings(prior_r1m,prior_r1sd,prior_r2m, prior_r2sd, p1Wins)
     
-    postRatings$pm[p1] <<- postInfo$r1m
-    postRatings$psd[p1] <<- postInfo$r1sd 
-    postRatings$pm[p2] <<- postInfo$r2m
-    postRatings$psd[p2] <<- postInfo$r2sd  
+    postRatings$prs[p1] <<- postInfo$r1m
+    postRatings$prsds[p1] <<- postInfo$r1sd 
+    postRatings$prs[p2] <<- postInfo$r2m
+    postRatings$prsds[p2] <<- postInfo$r2sd  
     
     #############
-    if(p1Wins) {
-      winner <- as.character(p1)
-    }
-    else {
-      winner <- as.character(p2)
-    }
+    #if(p1Wins) {
+    #  winner <- as.character(p1)
+    #}
+    #else {
+    #  winner <- as.character(p2)
+    #}
     #print(sprintf("m1 = %f sd1 = %f m2 = %f sd2 = %f %s",postRatings$pm[1],postRatings$psd[1],postRatings$pm[2],postRatings$psd[2],winner))
     #############
   }
@@ -87,52 +96,39 @@ runOneWeek <- function(matchFrame,priorRatings) {
   postRatings
 }
 
-##=================
-## variables
-##=================
-# rm - vector of player rating means
-# rsd - vector of player rating variances
+getInitialRatings <- function(numPlayers,r1) {
 
-
-##======================================
-## Run the simulation
-##======================================
-
-##get the simulated players and results
-simData <- getSimulatedData(NUM_PLAYERS,NUM_WEEKS)
-players <- simData$players
-matches <- simData$matches
-
-## initial ratings matrix
-##we have the first player hard coded to an integer
-pm0 <- rep(MEAN_0,NUM_PLAYERS)
-psd0 <- rep(SD_0,NUM_PLAYERS)
-
-#fix one player - player 1
-pm0[1] <- players[1]
-psd0[1] <- FIXED_SD_0
-
-ratings0 <- list(pm = pm0, psd = psd0 )
-
-##this is the seed for our monte carlo simulations
-set.seed(34234)
-
-##evolve the ratings
-ratings <- list()
-ratings[[1]] <-  runOneWeek(matches[[1]],ratings0)
-for(i in 2:NUM_WEEKS) {
-  ratings[[i]] <- runOneWeek(matches[[i]],ratings[[i-1]])
+  prs <- rep(MEAN_0,numPlayers)
+  prsds <- rep(SD_0,numPlayers)
+  
+  #fix one player - player 1
+  prs[1] <- r1
+  prsds[1] <- FIXED_SD_0
+  
+  ratings0 <- list(prs = prs, prsds = prsds)
 }
 
-
-results <- data.frame(player = 1:NUM_PLAYERS,actual = players,meas = ratings[[NUM_WEEKS]]$pm, measdev = ratings[[NUM_WEEKS]]$psd)
-results$err <- results$meas - results$actual
-results$zerr <- results$err / results$measdev
-
-print(results)
-print(sum(results$err^2))
+##=======================================
+## Model Object
+##=======================================
 
 
-                   
+######################################################################
+## END OF WRAPPER TO RETURN MODEL
+continuousMonteCarlo <- list()
+continuousMonteCarlo$getInitialRatings <- getInitialRatings
+continuousMonteCarlo$processMatches <- processMatches
+
+continuousMonteCarlo$name <- "Continuous Monte Carlo"
+continuousMonteCarlo$hasSD <- TRUE
+
+  continuousMonteCarlo
+}
+######################################################################
+
+
+
+
+
 
 

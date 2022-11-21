@@ -1,14 +1,9 @@
-set.seed(17)
-
 source("simData.r")
 
 ##================================
 ## discrete model
 ## This is a discrete model for the probabilistic ranking system.
 ##================================
-
-NUM_PLAYERS <- 2
-NUM_WEEKS <- 100
 
 ## we implicitly assume two players in this algo
 if(NUM_PLAYERS != 2) {

@@ -2,8 +2,15 @@ source("simData.r")
 
 library(cubature)
 
-NUM_PLAYERS <- 2
-NUM_WEEKS <- 20
+######################################################################
+## WRAPPER TO RETURN MODEL
+## (FIGURE OUT THE PROPER WAY TO PROTECT THESE LATER)
+## This wraps all the code that generates the model. I think I want
+## to make a package instead
+getContinuousIntegrate <- function() {
+  
+######################################################################
+
 
 ## the mean of our initial distribution
 MEAN_0 <- 50
@@ -127,38 +134,38 @@ calcNewRatings <- function(r1m,r1sd,r2m,r2sd,p1Wins,p1Index,p2Index) {
   list(r1m = post_mean_1, r1sd = sqrt(post_var_1), r2m = post_mean_2, r2sd = sqrt(post_var_2) )
 }
 
-runOneWeek <- function(matchFrame,priorRatings) {
+processMatches <- function(matchFrame,priorRatings) {
   # copy the ratings. We will update them for each game
   # (later we will evolve the ratings before update, probably)
   postRatings <- priorRatings
   
   ##############################################################################
   ## for distribution plots
-  oldMfrow <- par("mfrow")
-  par(mfrow=c(1,2))
+  #oldMfrow <- par("mfrow")
+  #par(mfrow=c(1,2))
   ##############################################################################  
   
   #this function process one match, getting updated ratings
   processMatch <- function(p1,p2,p1Wins) {
-    prior_r1m <- priorRatings$pm[p1]
-    prior_r1sd <- priorRatings$psd[p1]
-    prior_r2m <- priorRatings$pm[p2]
-    prior_r2sd <- priorRatings$psd[p2]
+    prior_r1m <- priorRatings$prs[p1]
+    prior_r1sd <- priorRatings$prsds[p1]
+    prior_r2m <- priorRatings$prs[p2]
+    prior_r2sd <- priorRatings$prsds[p2]
     
     postInfo = calcNewRatings(prior_r1m,prior_r1sd,prior_r2m, prior_r2sd, p1Wins, p1Index = p1, p2Index = p2)
 
-    postRatings$pm[p1] <<- postInfo$r1m
-    postRatings$psd[p1] <<- postInfo$r1sd 
-    postRatings$pm[p2] <<- postInfo$r2m
-    postRatings$psd[p2] <<- postInfo$r2sd  
+    postRatings$prs[p1] <<- postInfo$r1m
+    postRatings$prsds[p1] <<- postInfo$r1sd 
+    postRatings$prs[p2] <<- postInfo$r2m
+    postRatings$prsds[p2] <<- postInfo$r2sd  
     
     #############
-    if(p1Wins) {
-      winner <- as.character(p1)
-    }
-    else {
-      winner <- as.character(p2)
-    }
+    #if(p1Wins) {
+    #  winner <- as.character(p1)
+    #}
+    #else {
+    # winner <- as.character(p2)
+    #}
     #print(sprintf("%d m = %f sd = %f %d m = %f sd = %f winner = %s",p1,postRatings$pm[1],postRatings$psd[1],p2,postRatings$pm[2],postRatings$psd[2],winner))
     #############
   }
@@ -168,12 +175,43 @@ runOneWeek <- function(matchFrame,priorRatings) {
   
   ##############################################################################
   ## for distribution plots
-  par(mfrow=oldMfrow)
+  ##par(mfrow=oldMfrow)
   ##############################################################################  
   
   # return the new ratings matrix
   postRatings
 }
+
+
+getInitialRatings <- function(numPlayers,r1) {
+  prs <- rep(MEAN_0,numPlayers)
+  prsds <- rep(SD_0,numPlayers)
+  
+  #fix one player - player 1
+  prs[1] <- r1
+  prsds[1] <- FIXED_SD_0
+  
+  ratings0 <- list(prs = prs, prsds = prsds)
+}
+
+##=======================================
+## Model Object
+##=======================================
+
+######################################################################
+## END OF WRAPPER TO RETURN MODEL
+
+continuousIntegrate <- list()
+continuousIntegrate$getInitialRatings <- getInitialRatings
+continuousIntegrate$processMatches <- processMatches
+
+continuousIntegrate$name <- "Continuous Integrate"
+continuousIntegrate$hasSD <- TRUE
+
+  continuousIntegrate
+}
+
+######################################################################
 
 ##=================
 ## variables
@@ -185,37 +223,28 @@ runOneWeek <- function(matchFrame,priorRatings) {
 ##======================================
 ## Run the simulation
 ##======================================
-
+xxxxxx <- function() {
 ##get the simulated players and results
-simData <- getSimulatedData(NUM_PLAYERS,NUM_WEEKS)
+simData <- getSimulatedData(NUM_PLAYERS,NUM_WEEKS,111)
 players <- simData$players
 matches <- simData$matches
 
-## initial ratings matrix
-##we have the first player hard coded to an integer
-pm0 <- rep(MEAN_0,NUM_PLAYERS)
-psd0 <- rep(SD_0,NUM_PLAYERS)
-
-#fix one player - player 1
-pm0[1] <- players[1]
-psd0[1] <- FIXED_SD_0
-
-ratings0 <- list(pm = pm0, psd = psd0 )
+ratings0 <- getInitialRatings(NUM_PLAYERS,players[1])
 
 ##evolve the ratings
 ratings <- list()
-ratings[[1]] <-  runOneWeek(matches[[1]],ratings0)
+ratings[[1]] <-  processMatches(matches[[1]],ratings0)
 for(i in 2:NUM_WEEKS) {
-  ratings[[i]] <- runOneWeek(matches[[i]],ratings[[i-1]])
+  ratings[[i]] <- processMatches(matches[[i]],ratings[[i-1]])
+}
 }
 
-
-results <- data.frame(player = 1:NUM_PLAYERS,actual = players,meas = ratings[[NUM_WEEKS]]$pm, measdev = ratings[[NUM_WEEKS]]$psd)
-results$err <- results$meas - results$actual
-results$zerr <- results$err / results$measdev
-
-print(results)
-print(sum(results$err^2))
+#results <- data.frame(player = 1:NUM_PLAYERS,actual = players,meas = ratings[[NUM_WEEKS]]$prs, measdev = ratings[[NUM_WEEKS]]$prsds)
+#results$err <- results$meas - results$actual
+#results$zerr <- results$err / results$measdev
+#
+#print(results)
+#print(sum(results$err^2))
 
 
 ##======================================
@@ -249,17 +278,3 @@ xxx <- function() {
     print(range(m))
   }
 }
-
-getNormalDistFunc <- function(rm,rsd) {
-  function(r) {
-    normDist(r[1],rm,rsd)*normDist(r[2],rm,rsd)
-  }
-}
-getUpper <- function(rm,rsd) {
-  c(rm + 8 * rsd,rm + 8 * rsd)
-}
-getLower <- function(rm,rsd) {
-  c(rm - 8 * rsd,rm - 8 * rsd)
-}
-nd <- getNormalDistFunc(14,13)
-adaptIntegrate(nd,getLower(14,13),getUpper(14,13))

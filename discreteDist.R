@@ -7,6 +7,15 @@ source("matchUtil.R")
 ## This is a discrete model for the probabilistic ranking system.
 ##================================
 
+######################################################################
+## WRAPPER TO RETURN MODEL
+## (FIGURE OUT THE PROPER WAY TO PROTECT THESE LATER)
+## This wraps all the code that generates the model. I think I want
+## to make a package instead
+getDiscreteDist <- function() {
+  
+######################################################################
+
 ##length of the quantized simulation vector
 SIM_N <- 100
 
@@ -149,15 +158,24 @@ getInitialRatings <- function(numPlayers,r1) {
   getRatingsObject(pDists)
 }
 
+##=======================================
+## Model Object
+##=======================================
+
+######################################################################
+## END OF WRAPPER TO RETURN MODEL
 
 discreteDist <- list()
 discreteDist$getInitialRatings <- getInitialRatings
 discreteDist$processMatches <- processMatches
 
-## accessor for the test functions
-getDiscreteDist <- function() {
+discreteDist$name <- "Discrete Distribution"
+discreteDist$hasSD <- TRUE
+
   discreteDist
 }
+
+######################################################################
 
 
 

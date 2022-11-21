@@ -4,8 +4,14 @@ library(dplyr)
 
 source("simData.r")
 
-NUM_PLAYERS <- 2
-NUM_WEEKS <- 20
+######################################################################
+## WRAPPER TO RETURN MODEL
+## (FIGURE OUT THE PROPER WAY TO PROTECT THESE LATER)
+## This wraps all the code that generates the model. I think I want
+## to make a package instead
+getEloModel <- function() {
+  
+######################################################################
 
 R0 <- 0
 
@@ -13,61 +19,68 @@ R0 <- 0
 ## For now, we will assume our ratings are 1/8 of his
 
 RATING_GAIN = 1.75
+#RATING_GAIN = 5
  
   
 ##============================
+## Exported Functions
+##============================
+
+getInitialRatings <- function(numPlayers,r1) {
+  ratings0 = list()
+  ratings0$prs <- rep(r1,NUM_PLAYERS)
+  ratings0
+}
 
 
 
-runOneWeek <- function(matchFrame,priorRatings) {
-  postRatings <- priorRatings
+processMatches <- function(matchFrame,priorRatings) {
+  prs <- priorRatings$prs
   
   #this function process one match, getting updated ratings
   processMatch <- function(p1,p2,p1Wins) {
-    prior_r1 <- priorRatings[p1]
-    prior_r2 <- priorRatings[p2]
+    prior_r1 <- prs[p1]
+    prior_r2 <- prs[p2]
     
     pp1 = pMatch(prior_r1,prior_r2,TRUE)
     
     post_r1 <- prior_r1 + RATING_GAIN * (p1Wins - pp1)
     post_r2 <- prior_r2 - RATING_GAIN * (p1Wins - pp1) ## same value as p1 but minus sign
     
-    postRatings[p1] <<- post_r1
-    postRatings[p2] <<- post_r2
+    prs[p1] <<- post_r1
+    prs[p2] <<- post_r2
   }
   
   #processMatch for each row of the match data frame
   mapply(processMatch,matchFrame$p1,matchFrame$p2,matchFrame$win1)
   
   # return the new ratings vector
-  postRatings
+  list(prs=prs)
 }
 
-##======================================
-## Run the simulation
-##======================================
+##=======================================
+## Model Object
+##=======================================
 
-##get the simulated players and results
-simData <- getSimulatedData(NUM_PLAYERS,NUM_WEEKS)
-players <- simData$players
-matches <- simData$matches
+######################################################################
+## END OF WRAPPER TO RETURN MODEL
 
-R0 <- players[1]
+eloModel <- list()
+eloModel$getInitialRatings <- getInitialRatings
+eloModel$processMatches <- processMatches
+eloModel$name <- "Elo Model"
+eloModel$hasSD <- FALSE
 
-## initial ratings matrix
-##we have the first player hard coded to an integer
-ratings0 <- rep(R0,NUM_PLAYERS)
-
-##evolve the ratings
-ratings <- list()
-ratings[[1]] <-  runOneWeek(matches[[1]],ratings0)
-for(i in 2:NUM_WEEKS) {
-  ratings[[i]] <- runOneWeek(matches[[i]],ratings[[i-1]])
+  eloModel
 }
+######################################################################
+
 
 ##-----------------------------
 ## correct for drift in r1 - since we fixed this in other models, as a free parameter
 ##-----------------------------
+dontRun <- function() {
+  
 finalRatings <- ratings[[NUM_WEEKS]] + R0 - ratings[[NUM_WEEKS]][1]
 
 results <- data.frame(player = 1:NUM_PLAYERS,actual = players,meas = finalRatings)
@@ -75,3 +88,4 @@ results$err <- results$meas - results$actual
 
 print(results)
 print(sum(results$err^2))
+}
