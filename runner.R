@@ -33,8 +33,8 @@ source("totalProb.R")
 ## NOTES
 ## - for now I am not assuming the test object functions are vectorized.
 
-NUM_PLAYERS <- 4L
-NUM_WEEKS <- 5L
+NUM_PLAYERS <- 10L
+NUM_WEEKS <- 100L
 
 ## This method takes the ratings output and adds the error from the 
 ## actaul values  and the summed errors squared. If the standard deviation 
@@ -103,6 +103,9 @@ getResultsFrame <- function(weekRatings,actualRatings,seed) {
   df$seed <- seed
   df$week <- weekRatings$week
   
+  ## discard the first row - this is a fixed rating
+  df <- df[2:nrow(df),]
+  
   df
 }
 
@@ -165,10 +168,12 @@ multiRunModel <- function(model,simDataList) {
   playerWeekSeedList <-lapply(simDataList,runModelDF,model=model)
   
   ##TBD - supply an id? I want to put the seed in. Depends if I have it in the small data frames.
-  playerWeekSeedDF <- bind_rows(playerWeekSeedList,.id=NULL)
+  playerWeekSeedDF <- bind_rows(playerWeekSeedList)
   
   ## group over weeks to get mean and sd for samples (over players + seeds)
-  weekDF <- playerWeekSeedDF %>% group_by("week") %>% summarise( FIXTHIS )
+  weekDF <- playerWeekSeedDF %>% group_by(week) %>% summarise( merr=mean(err),merr2=mean(err^2),mzerr=mean(zerr),mzerr2=mean(zerr^2))
+  
+  weekDF$model = model$name
   
   ## return this
   weekDF
@@ -181,7 +186,7 @@ multiRunModels <- function(models,simDataList) {
   modelWeekList <- lapply(models,multiRunModel,simDataList=simDataList)
   
   ##figure out how to add the model name
-  modelWeekDF <- bind_rows(modelWeekList,.id="column_name")
+  modelWeekDF <- bind_rows(modelWeekList)
   
   ##plot measurement error versus model
   
@@ -203,7 +208,7 @@ models <- list(getEloModel(),getDiscreteDist())
 names(models) <- sapply(models,function(mdl) {mdl$name})
 
 ##get the simulated players and results
-seeds = c(67,234,325,2341)
+seeds = 1:100
 simDataList = lapply(seeds,getSimulatedData,numPlayers=NUM_PLAYERS,numWeeks=NUM_WEEKS)
 
 multiRunModels(models,simDataList)
