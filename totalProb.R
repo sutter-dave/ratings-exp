@@ -1,23 +1,34 @@
 ## Full Maximal Probability Model
 
+############################
+## NOTES 11/21/22
+## - I commented out the code that used the previous solution to 
+##   find the next solution. This made results worse. That is a problem
+##   that needs to be fixed.  I think noise changes the true max value
+##   and when we look too long we find it. We need to make it less sensitive
+##   to this. Maybe fit the peak based on distributed values.
+## We can do more to clean this up. 
+## - rewrite the equation. nuemrator in particular ln(exp(x)) -> x!
+## - use derivitives
+## - at some point maybe expand solution around a fixed point (such as
+##   the initial guess, if we are close enough?)
+############################
+
 library(dplyr)
 
-source("simData.r")
+source("matchUtil.R")
 
-NUM_PLAYERS <- 2
-NUM_WEEKS <- 20
-
-##filled in below
-R0 <- 0
-
-## This gives the probability of the result p1Wins (TRUE or FALSE)
-## given the values of r1 and r2
-## (This function is vectorized)
-pMatchVec <- function(r1,r2,p1Wins) {
-  e1 <- exp(r1/PROB_CONSTANT)
-  e2 <- exp(r2/PROB_CONSTANT)
-  (p1Wins * e1 + (!p1Wins) * e2) / (e1 + e2)
-}
+######################################################################
+## WRAPPER TO RETURN MODEL
+## (FIGURE OUT THE PROPER WAY TO PROTECT THESE LATER)
+## This wraps all the code that generates the model. I think I want
+## to make a package instead
+getTotalProb <- function() {
+  
+######################################################################
+  
+LOWER_BOUND <- MIN_RATING - (MAX_RATING - MIN_RATING)/2
+UPPER_BOUND <- MAX_RATING + (MAX_RATING - MIN_RATING)/2
 
 ## this gives the derivitive of the math result probability with respect to r
 ## given r and r2 and result win (TRUE or FALSE)
@@ -38,39 +49,39 @@ gradLogP <- function(r1,r2,p1Wins,p1,p2,pr) {
 
 ## This gets the vector or probabilities for the different match outcomes
 ## (This function is vectorized)
-getFrameProbVec <- function(rFull,oneFrame) {
-  pMatchVec(rFull[oneFrame$p1],rFull[oneFrame$p2],oneFrame$win1)
+getFrameProbVec <- function(rFull,matches) {
+  pMatch(rFull[matches$p1],rFull[matches$p2],matches$win1)
 }
 
 ## This returns the negative of the log of the probability for all match outcomes
 ## for this value of rFree (the ratings vector excluding player 1, which is fixed)
-getFrameLogProb <- function(rFree,oneFrame) {
-  rFull <- c(R0,rFree)  
-  -sum(log(getFrameProbVec(rFull,oneFrame)))
+getFrameLogProb <- function(rFree,matches,r1) {
+  rFull <- c(r1,rFree)  
+  -sum(log(getFrameProbVec(rFull,matches)))
 }
 
 SMOOTH_HCNT = 500
 SMOOTH_SD <- 5
-getFrameLogProbSmoothed <- function(rFree,oneFrame) {
-  val <- getFrameLogProb(rFree,oneFrame) / (2 * SMOOTH_HCNT + 1)
+getFrameLogProbSmoothed <- function(rFree,matches) {
+  val <- getFrameLogProb(rFree,matches) / (2 * SMOOTH_HCNT + 1)
   for(i in 1:SMOOTH_HCNT) {
     rCloud = rnorm(length(rFree),0,SMOOTH_SD)
-    val = val + getFrameLogProb(rFree + rCloud,oneFrame) / (2 * SMOOTH_HCNT + 1)
-    val = val + getFrameLogProb(rFree - rCloud,oneFrame) / (2 * SMOOTH_HCNT + 1)
+    val = val + getFrameLogProb(rFree + rCloud,matches) / (2 * SMOOTH_HCNT + 1)
+    val = val + getFrameLogProb(rFree - rCloud,matches) / (2 * SMOOTH_HCNT + 1)
   }
   val
 }
 
 ## this gets the gradient of the negative log of the probability 
 ## for all match outcomes for this rFree (the ratings vector excluding player 1, which is fixed)
-getFrameLogProbGrad <- function(rFree,oneFrame) {
-  rFull <- c(R0,rFree)  
+getFrameLogProbGrad <- function(rFree,matches,r1) {
+  rFull <- c(r1,rFree)  
   
-  p1 <- oneFrame$p1
-  p2 <- oneFrame$p2
+  p1 <- matches$p1
+  p2 <- matches$p2
   r1 <- rFull[p1]
   r2 <- rFull[p2]
-  p1Wins <- oneFrame$win1
+  p1Wins <- matches$win1
   
   gradVec = numeric()
   for(p_grad in 2:NUM_PLAYERS) {
@@ -79,9 +90,83 @@ getFrameLogProbGrad <- function(rFree,oneFrame) {
   gradVec
 }
 
-##======================================
-## Run the simulation
-##======================================
+
+## This calculates ratings given a set of matches and an initial ratings guess
+calculateRatings <- function(matches,initialRs) {
+  ##solve only for the free variables (player one rating is fixed)
+  r1 <- initialRs[1]
+  initialFreeRs <- initialRs[2:length(initialRs)]
+  
+  if(length(initialFreeRs) == 1) {
+    ## must use brent for 1d solution
+    out <- optim(initialFreeRs,getFrameLogProb,matches=matches,r1=r1,method="Brent",lower=LOWER_BOUND,upper=UPPER_BOUND)
+  }
+  else {
+    out <- optim(initialFreeRs,getFrameLogProb,matches=matches,r1=r1)
+  }
+  
+  print(out$par)
+  if( (out$convergence == 0) || (max(out$par) > UPPER_BOUND) || (min(out$par) < LOWER_BOUND) )  {
+    rs <- initialRs
+    print(sprintf("NO CONVERGENCE: %i %i",length(matches$p1),out$convergence))
+  }
+  else {
+    rs <- c(r1,out$par)
+    print(sprintf("convergence: %i %i",length(matches$p1),out$convergence))
+  }
+  
+  rs
+}
+
+
+##=========================
+## For the incremental interface as in the test
+##=========================
+
+getInitialRatings <- function(numPlayers,r1) {
+  ##start with everyone at the same ratings, r1
+  list(prs=rep(r1,numPlayers))
+}
+
+
+processMatches <- function(matchFrame,priorRatings) {
+  #combine all matches into one frame
+  #we will carrry around all the matches, since each calc requires all of them
+  if("matches" %in% names(priorRatings)) {
+    matches <- rbind(priorRatings$matches,matchFrame)
+  }
+  else {
+    matches <- matchFrame
+  }
+  
+  #prs <- calculateRatings(matches,priorRatings$prs)
+  prs <- calculateRatings(matches,rep(priorRatings$prs[1],length(priorRatings$prs)))
+  
+  list(prs=prs,matches=matches)
+}
+
+##=======================================
+## Model Object
+##=======================================
+
+
+######################################################################
+## END OF WRAPPER TO RETURN MODEL
+totalProbModel <- list()
+totalProbModel$getInitialRatings <- getInitialRatings
+totalProbModel$processMatches <- processMatches
+
+totalProbModel$name <- "Total Probability"
+totalProbModel$hasSD <- FALSE
+
+totalProbModel
+}
+######################################################################
+
+################################################################################
+################################################################################
+################################################################################
+dontRUn <- function(dummy) {
 
 ##get the simulated players and results
 simData <- getSimulatedData(NUM_PLAYERS,NUM_WEEKS)
@@ -106,9 +191,7 @@ print(results)
 print(sum(results$err^2))
 
 ################################################################################
-################################################################################
-################################################################################
-dontRUn <- function(dummy) {
+
   
 outS <- optim(rep(R0,NUM_PLAYERS-1),getFrameLogProbSmoothed,oneFrame=oneFrame)
 outS1 <- optim(outS$par,getFrameLogProbSmoothed,oneFrame=oneFrame)
@@ -264,14 +347,14 @@ plotDist(c(R0,out$par),oneFrame,9)
 #}
 #plot(x,y)
 
-#pMatchVec <- function(r1,r2,p1Wins) 
+#pMatch <- function(r1,r2,p1Wins) 
 #gradLogP <- function(r1,r2,p1Wins,p1,p2,pr)
 
 ## test 1
 
 testing <- function(dummy) {
-v1 <- pMatchVec(30,50,TRUE)
-v2 <- pMatchVec(30.02,50,TRUE)
+v1 <- pMatch(30,50,TRUE)
+v2 <- pMatch(30.02,50,TRUE)
 
 dv <- gradLogP_impl(30.01,50,TRUE)
 dvf <- gradLogP(30.01,50,TRUE,1,2,1)
@@ -280,8 +363,8 @@ dvest = (log(v2) - log(v1) ) / .02
 
 ## test 2
 
-v1 <- pMatchVec(30,50,FALSE)
-v2 <- pMatchVec(30.02,50,FALSE)
+v1 <- pMatch(30,50,FALSE)
+v2 <- pMatch(30.02,50,FALSE)
 
 dv <- gradLogP_impl(30.01,50,FALSE)
 dvf <- gradLogP(50,30.01,TRUE,1,2,2)

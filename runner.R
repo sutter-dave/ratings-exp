@@ -4,6 +4,7 @@ source("discreteDist.R")
 source("eloModel.R")
 source("continuousIntegrate.R")
 source("continuousMonteCarlo.R")
+source("totalProb.R")
 
 ##conventions:
 ##
@@ -79,9 +80,13 @@ runModel <- function(model,matches,actualRatings) {
   list(ratings=ratings,model=model)
 }
 
-runComparison <- function(models,matches,actualRatings,modelColors) {
+runComparison <- function(models,matches,actualRatings) {
   ##run all the models on the given data
   modelsResults <- lapply(models,runModel,matches=matches,actualRatings=actualRatings)
+  
+  ##get colors for the models, indexed by name
+  modelColors <- palette.colors(length(models),palette="Dark 2")
+  names(modelColors) <- names(models)
   
   ## get the plot data for these results
   modelsPlotData <- lapply(modelsResults,collectPlotData,modelColors=modelColors)
@@ -105,6 +110,7 @@ runComparison <- function(models,matches,actualRatings,modelColors) {
 
 ## This collects values from the models results for plotting
 collectPlotData <- function(modelResults,modelColors) {
+  
   plotData <- list()
   ## error
   plotData$err <- sapply(modelResults$ratings,function(ratingsEntry) ratingsEntry$err)
@@ -140,17 +146,13 @@ plotModelField <- function(modelPlotData,field) {
 
 ## load models
 models <- list(getEloModel(),getDiscreteDist())
+#models <- list(getEloModel(),getDiscreteDist(),getTotalProb())
 #models <- list(getEloModel(),getDiscreteDist(),getContinuousMonteCarlo())
-
+#models <- list(getTotalProb())
 #getContinuousIntegrate(),
 #getContinuousMonteCarlo())
 
 names(models) <- sapply(models,function(mdl) {mdl$name})
-
-modelColors <- list("red","blue")
-#modelColors <- list("red","blue","black")
-names(modelColors) <- names(models)
-
 
 ##get the simulated players and results
 seed = 67
@@ -159,7 +161,7 @@ simData = getSimulatedData(NUM_PLAYERS,NUM_WEEKS,seed)
 actualRatings = simData$players #actual ratings vector
 matches = simData$matches
 
-runComparison(models,matches,actualRatings,modelColors)
+runComparison(models,matches,actualRatings)
 
 
 ######################################################

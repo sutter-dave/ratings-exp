@@ -4,7 +4,7 @@ source("matchUtil.R")
 ## this function creates a data frame with a set of generated matches
 ## for the group (I call this matches in one "week" for the simulation)
 ## and some accompanying information
-getWeekMatches <- function(players) {
+getWeekMatches <- function(players,week) {
   numPlayers = length(players)
   
   ms <- matrix(sample(1:numPlayers,numPlayers),nrow = numPlayers / 2)
@@ -22,6 +22,8 @@ getWeekMatches <- function(players) {
   
   ## add a column for the winner
   matchFrame$win1 <- matchFrame$pwin1 > matchFrame$mrv
+  
+  matchFrame$week <- rep(week,length(matchFrame$p1))
   
   matchFrame
 }
@@ -54,7 +56,7 @@ getSimulatedData <- function(NUM_PLAYERS,NUM_WEEKS,seed) {
   matches <- list()
   
   for(i in 1:NUM_WEEKS) {
-    matches[[i]] <- getWeekMatches(players)
+    matches[[i]] <- getWeekMatches(players,i)
   }
   
   matches = matches
