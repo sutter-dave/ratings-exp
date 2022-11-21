@@ -29,6 +29,7 @@ RATING_GAIN = 1.75
 getInitialRatings <- function(numPlayers,r1) {
   ratings0 = list()
   ratings0$prs <- rep(r1,NUM_PLAYERS)
+  ratings0$prsds <- rep(NA,NUM_PLAYERS)
   ratings0
 }
 
@@ -54,8 +55,12 @@ processMatches <- function(matchFrame,priorRatings) {
   #processMatch for each row of the match data frame
   mapply(processMatch,matchFrame$p1,matchFrame$p2,matchFrame$win1)
   
+  ##correct for drift in r1 - since we are keeping this fixed
+  dr1 <- prs[1] - priorRatings$prs[1]
+  prs <- prs - dr1
+  
   # return the new ratings vector
-  list(prs=prs)
+  list(prs=prs,prsds=priorRatings$prsds)
 }
 
 ##=======================================

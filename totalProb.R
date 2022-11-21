@@ -125,7 +125,7 @@ calculateRatings <- function(matches,initialRs) {
 
 getInitialRatings <- function(numPlayers,r1) {
   ##start with everyone at the same ratings, r1
-  list(prs=rep(r1,numPlayers))
+  list(prs=rep(r1,numPlayers),prsds=rep(NA,NUM_PLAYERS))
 }
 
 
@@ -142,7 +142,7 @@ processMatches <- function(matchFrame,priorRatings) {
   #prs <- calculateRatings(matches,priorRatings$prs)
   prs <- calculateRatings(matches,rep(priorRatings$prs[1],length(priorRatings$prs)))
   
-  list(prs=prs,matches=matches)
+  list(prs=prs,prsds=priorRatings$prsds,matches=matches)
 }
 
 ##=======================================

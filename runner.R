@@ -33,8 +33,8 @@ source("totalProb.R")
 ## NOTES
 ## - for now I am not assuming the test object functions are vectorized.
 
-NUM_PLAYERS <- 10L
-NUM_WEEKS <- 100L
+NUM_PLAYERS <- 4L
+NUM_WEEKS <- 5L
 
 ## This method takes the ratings output and adds the error from the 
 ## actaul values  and the summed errors squared. If the standard deviation 
@@ -56,57 +56,13 @@ processMatches <- function(model,matchFrame,priorRatings,actualRatings) {
   evalRatings(postRatings,actualRatings)
 }
 
+####################################
+
 fieldToVec <- function(lst,field) {
   sapply(lst,function(entry) entry[[field]])
 }
 
-## This function runs a model on a given set of matches
-## and actual ratings
-runModel <- function(model,matches,actualRatings) {
-  
-  numPlayers <- length(actualRatings)
-  numWeeks <- length(matches)
-  
-  ## initial ratings
-  ratings0 <- model$getInitialRatings(numPlayers,actualRatings[1])
-  
-  ##evolve the ratings
-  ratings = list()
-  ratings[[1]] =  processMatches(model,matches[[1]],ratings0,actualRatings)
-  for(i in 2:numWeeks) {
-    ratings[[i]] = processMatches(model,matches[[i]],ratings[[i-1]],actualRatings)
-  }
-  
-  list(ratings=ratings,model=model)
-}
 
-runComparison <- function(models,matches,actualRatings) {
-  ##run all the models on the given data
-  modelsResults <- lapply(models,runModel,matches=matches,actualRatings=actualRatings)
-  
-  ##get colors for the models, indexed by name
-  modelColors <- palette.colors(length(models),palette="Dark 2")
-  names(modelColors) <- names(models)
-  
-  ## get the plot data for these results
-  modelsPlotData <- lapply(modelsResults,collectPlotData,modelColors=modelColors)
-  
-  errPlotLimits <- getPlotLimits(modelsPlotData,"err")
-  
-  plot(1:NUM_WEEKS,modelsPlotData[[1]]$err,t="n",
-       ylim=errPlotLimits,
-       main=sprintf("Err^2: %i players, %i weeks",NUM_PLAYERS,NUM_WEEKS))
-  dummy <- lapply(modelsPlotData,plotModelField,field="err")
-  legend("topright",col=sapply(modelsPlotData,function(plotData) plotData$col),lwd=2,legend=sapply(modelsPlotData,function(plotData) plotData$name))
-  
-  zerrPlotLimits <- getPlotLimits(modelsPlotData,"zerr")
-  
-  plot(1:NUM_WEEKS,modelsPlotData[[2]]$zerr,t="n",
-       ylim=zerrPlotLimits,
-       main=sprintf("Err^2: %i players, %i weeks",NUM_PLAYERS,NUM_WEEKS))
-  dummy <- lapply(modelsPlotData,plotModelField,field="zerr")
-  
-}
 
 ## This collects values from the models results for plotting
 collectPlotData <- function(modelResults,modelColors) {
@@ -138,7 +94,99 @@ plotModelField <- function(modelPlotData,field) {
   lines(1:NUM_WEEKS,modelPlotData[[field]],col=modelPlotData$col,lwd=2)
 }
 
-#,col=modelPlotData$col,
+## This function converts a weeRatings object used by the models into a 
+## standard ratings data frame object
+getResultsFrame <- function(weekRatings,actualRatings,seed) {
+  df = data.frame(pers=weekRatings$prs,persds=weekRatings$prsds,pars=actualRatings)
+  df$err <- df$pers - df$pars
+  df$zerr <- df$err / df$persds
+  df$seed <- seed
+  df$week <- weekRatings$week
+  
+  df
+}
+
+##============================
+
+## This function runs a model on a given set of matches
+## and actual ratings, returning a list with the ratings 
+## object (model dependent) for each week
+runModel <- function(model,matches,actualRatings) {
+  
+  numPlayers <- length(actualRatings)
+  numWeeks <- length(matches)
+  r1 <- actualRatings[1]
+  
+  ## initial ratings
+  ratings0 <- model$getInitialRatings(numPlayers,r1)
+  
+  ##evolve the ratings
+  weekRatingsList <- list()
+  weekRatingsList[[1]] <-model$processMatches(matches[[1]],ratings0)
+  
+  ##ADD THIS IN A BETTER WAY!!!
+  weekRatingsList[[1]]$week <- 1
+  
+  for(i in 2:numWeeks) {
+    weekRatingsList[[i]] <- model$processMatches(matches[[i]],weekRatingsList[[i-1]])
+    
+    ##ADD THIS IN A BETTER WAY!!!
+    weekRatingsList[[i]]$week <- i
+  }
+  
+  weekRatingsList
+}
+
+## This function calls run model and converts the result to standardized
+## data frame rather than a list of ratings objects.
+runModelDF <- function(simData,model) {
+  
+  matches <- simData$matches
+  actualRatings <- simData$players
+  seed <- simData$seed
+  
+  weekRatingsList <- runModel(model,matches,actualRatings)
+  
+  playerWeekList <- lapply(weekRatingsList,getResultsFrame,actualRatings=actualRatings,seed=seed)
+  
+  ##i want a weeks column!!
+  playerWeekDF  <- bind_rows(playerWeekList)
+}
+
+## this takes a model a list of sim data based on different seeds.
+## it returns a data frame giving the model statistics by week, 
+## aggregating the data from different seeds to get weekly error values
+multiRunModel <- function(model,simDataList) {
+  
+  ## for each sim get model results (player,week)
+  ## combine to a single data frame
+  ## not wee need to add a seed column in the new runModel
+  ## bind_rows(list_of_dataframes, .id = "column_label") - dplyr. I think "column_label" puts the list name into a column
+  playerWeekSeedList <-lapply(simDataList,runModelDF,model=model)
+  
+  ##TBD - supply an id? I want to put the seed in. Depends if I have it in the small data frames.
+  playerWeekSeedDF <- bind_rows(playerWeekSeedList,.id=NULL)
+  
+  ## group over weeks to get mean and sd for samples (over players + seeds)
+  weekDF <- playerWeekSeedDF %>% group_by("week") %>% summarise( FIXTHIS )
+  
+  ## return this
+  weekDF
+}
+
+## this runs a set of simulations for each model, getting a dataframe giving
+## the expected errors for each model by week.
+multiRunModels <- function(models,simDataList) {
+  ## get the model week df and combine into a single data frame
+  modelWeekList <- lapply(models,multiRunModel,simDataList=simDataList)
+  
+  ##figure out how to add the model name
+  modelWeekDF <- bind_rows(modelWeekList,.id="column_name")
+  
+  ##plot measurement error versus model
+  
+  ##plot measurement z error versus model (this should be 1 if error estimate is accurate)
+}
 
 ##======================================
 ## Run the simulation
@@ -155,18 +203,45 @@ models <- list(getEloModel(),getDiscreteDist())
 names(models) <- sapply(models,function(mdl) {mdl$name})
 
 ##get the simulated players and results
-seed = 67
-simData = getSimulatedData(NUM_PLAYERS,NUM_WEEKS,seed)
+seeds = c(67,234,325,2341)
+simDataList = lapply(seeds,getSimulatedData,numPlayers=NUM_PLAYERS,numWeeks=NUM_WEEKS)
 
-actualRatings = simData$players #actual ratings vector
-matches = simData$matches
-
-runComparison(models,matches,actualRatings)
+multiRunModels(models,simDataList)
 
 
 ######################################################
 
 DONTRUN <- function() {
+  
+  ##FIGURE OUT WHAT I WANT TO DO WITH THIS
+  runComparison <- function(models,matches,actualRatings) {
+    ##run all the models on the given data
+    modelsResults <- lapply(models,runModel,matches=matches,actualRatings=actualRatings)
+    
+    ##get colors for the models, indexed by name
+    modelColors <- palette.colors(length(models),palette="Dark 2")
+    names(modelColors) <- names(models)
+    
+    ## get the plot data for these results
+    modelsPlotData <- lapply(modelsResults,collectPlotData,modelColors=modelColors)
+    
+    errPlotLimits <- getPlotLimits(modelsPlotData,"err")
+    
+    plot(1:NUM_WEEKS,modelsPlotData[[1]]$err,t="n",
+         ylim=errPlotLimits,
+         main=sprintf("Err^2: %i players, %i weeks",NUM_PLAYERS,NUM_WEEKS))
+    dummy <- lapply(modelsPlotData,plotModelField,field="err")
+    legend("topright",col=sapply(modelsPlotData,function(plotData) plotData$col),lwd=2,legend=sapply(modelsPlotData,function(plotData) plotData$name))
+    
+    zerrPlotLimits <- getPlotLimits(modelsPlotData,"zerr")
+    
+    plot(1:NUM_WEEKS,modelsPlotData[[2]]$zerr,t="n",
+         ylim=zerrPlotLimits,
+         main=sprintf("Err^2: %i players, %i weeks",NUM_PLAYERS,NUM_WEEKS))
+    dummy <- lapply(modelsPlotData,plotModelField,field="zerr")
+    
+  }
+  
 
 lines(1:NUM_WEEKS,,t="l",col=cols[1],lwd=2)
 

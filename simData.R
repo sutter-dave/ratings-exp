@@ -4,7 +4,7 @@ source("matchUtil.R")
 ## this function creates a data frame with a set of generated matches
 ## for the group (I call this matches in one "week" for the simulation)
 ## and some accompanying information
-getWeekMatches <- function(players,week) {
+getWeekMatches <- function(week,players) {
   numPlayers = length(players)
   
   ms <- matrix(sample(1:numPlayers,numPlayers),nrow = numPlayers / 2)
@@ -23,7 +23,7 @@ getWeekMatches <- function(players,week) {
   ## add a column for the winner
   matchFrame$win1 <- matchFrame$pwin1 > matchFrame$mrv
   
-  matchFrame$week <- rep(week,length(matchFrame$p1))
+  matchFrame$week <- week
   
   matchFrame
 }
@@ -35,7 +35,7 @@ getWeekMatches <- function(players,week) {
 
 ## This function creates a set of players with a randomized "rating"
 ## and a set of matches with simulated win/loss results
-getSimulatedData <- function(NUM_PLAYERS,NUM_WEEKS,seed) {
+getSimulatedData <- function(seed,numPlayers,numWeeks) {
   
   set.seed(seed)
 
@@ -43,9 +43,9 @@ getSimulatedData <- function(NUM_PLAYERS,NUM_WEEKS,seed) {
   ## simulated player "true" ratings
   ##------------------------------------
   
-  players <- runif(NUM_PLAYERS,MIN_RATING,MAX_RATING) 
+  players <- runif(numPlayers,MIN_RATING,MAX_RATING) 
   
-  ##fix one of the player rankings - player 1 at center point
+  ##fix one of the player rankings - player 1 at an integer near the center point
   players[1] = floor( (MIN_RATING + MAX_RATING)/2 )
 
   ##------------------------------------
@@ -53,13 +53,7 @@ getSimulatedData <- function(NUM_PLAYERS,NUM_WEEKS,seed) {
   ##------------------------------------
 
   ## we will make a list with matches (we will say each is one week)
-  matches <- list()
+  matches <- lapply(1:numWeeks,getWeekMatches,players=players)
   
-  for(i in 1:NUM_WEEKS) {
-    matches[[i]] <- getWeekMatches(players,i)
-  }
-  
-  matches = matches
-  
-  list(players=players,matches = matches)
+  list(players=players,matches=matches,seed=seed)
 }
