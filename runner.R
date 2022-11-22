@@ -6,6 +6,8 @@ source("continuousIntegrate.R")
 source("continuousMonteCarlo.R")
 source("totalProb.R")
 
+library(ggplot2)
+
 ##conventions:
 ##
 ## ratings object - a list with the following entries
@@ -171,7 +173,12 @@ multiRunModel <- function(model,simDataList) {
   playerWeekSeedDF <- bind_rows(playerWeekSeedList)
   
   ## group over weeks to get mean and sd for samples (over players + seeds)
-  weekDF <- playerWeekSeedDF %>% group_by(week) %>% summarise( merr=mean(err),merr2=mean(err^2),mzerr=mean(zerr),mzerr2=mean(zerr^2))
+  weekDF <- playerWeekSeedDF %>% group_by(week) %>% summarise( 
+    merr=mean(err), ## mean error (should be near 0)
+    sderr=sqrt(mean(err^2)), ## standard deviation of error (referenced to actual rating, not mean of err)
+    mmsd=mean(persds), ## mean or model standard deviation
+    mzerr=mean(zerr), ## mean of zerr (should be near 0)
+    sdzerr=sqrt(mean(zerr^2))) ##sd of zerr (should be 1)
   
   weekDF$model = model$name
   
@@ -189,8 +196,14 @@ multiRunModels <- function(models,simDataList) {
   modelWeekDF <- bind_rows(modelWeekList)
   
   ##plot measurement error versus model
+  g <- ggplot(modelWeekDF,aes(x=week,y=sderr)) + geom_line(aes(color=model)) + 
+    labs(title="Estimated Error by Week")
+  print(g)
   
   ##plot measurement z error versus model (this should be 1 if error estimate is accurate)
+  g <- ggplot(modelWeekDF,aes(x=week,y=sdzerr)) + geom_line(aes(color=model)) + 
+    labs(title="Std Dev of Z Error by Week")
+  print(g)
 }
 
 ##======================================
@@ -208,7 +221,7 @@ models <- list(getEloModel(),getDiscreteDist())
 names(models) <- sapply(models,function(mdl) {mdl$name})
 
 ##get the simulated players and results
-seeds = 1:100
+seeds = 30:60
 simDataList = lapply(seeds,getSimulatedData,numPlayers=NUM_PLAYERS,numWeeks=NUM_WEEKS)
 
 multiRunModels(models,simDataList)
